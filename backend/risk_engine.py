@@ -9,7 +9,7 @@ def calculate_risk(data, user_history):
         # If login_time is invalid, default to safe hour (9 AM)
         hour = 9
         reasons.append("Invalid login time format")
-    
+
     downloads = data.get("downloads", 0)
     location = data.get("location", "Unknown")
     failed_attempts = data.get("failed_attempts", 0)
@@ -38,12 +38,14 @@ def calculate_risk(data, user_history):
             valid_hours.append(int(log["login_time"].split(":")[0]))
         except (ValueError, IndexError, AttributeError, KeyError):
             continue  # Skip invalid entries
-    
+
     avg_login_hour = sum(valid_hours) / len(valid_hours) if valid_hours else 9
 
-    avg_downloads = sum(
-        log.get("downloads", 0) for log in user_history
-    ) / len(user_history) if user_history else 0
+    avg_downloads = (
+        sum(log.get("downloads", 0) for log in user_history) / len(user_history)
+        if user_history
+        else 0
+    )
 
     common_locations = {}
     for log in user_history:

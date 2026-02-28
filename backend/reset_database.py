@@ -37,10 +37,13 @@ sample_data = [
     ("user_005", "16:45", "Berlin", 20, 2),
 ]
 
-cursor.executemany("""
+cursor.executemany(
+    """
     INSERT INTO logs (user_id, login_time, location, downloads, failed_attempts)
     VALUES (?, ?, ?, ?, ?)
-""", sample_data)
+""",
+    sample_data,
+)
 
 conn.commit()
 conn.close()
