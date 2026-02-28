@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Database
+*.db
+
+# Logs
+*.log
+
+# ML Models (will be generated)
+*.pkl
+
+# IDE
+.vscode/
+.idea/

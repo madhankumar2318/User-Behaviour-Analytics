@@ -1,0 +1,39 @@
+# Add these endpoints to app.py before the "Run Server" section
+
+# -------------------------
+# ML API Endpoints
+# -------------------------
+@app.route("/ml-stats", methods=["GET"])
+def get_ml_stats():
+    """Get ML model statistics"""
+    return jsonify(ml_engine.get_model_stats())
+
+@app.route("/train-model", methods=["POST"])
+def train_model():
+    """Manually trigger model training"""
+    try:
+        conn = get_db_connection()
+        logs = conn.execute("SELECT * FROM logs").fetchall()
+        conn.close()
+        
+        log_dicts = [dict(log) for log in logs]
+        success = ml_engine.train(log_dicts)
+        
+        if success:
+            return jsonify({
+                "message": "Model trained successfully",
+                "logs_used": len(log_dicts)
+            })
+        else:
+            return jsonify({
+                "message": "Training failed - not enough data",
+                "logs_available": len(log_dicts)
+            }), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/user-profile/<user_id>", methods=["GET"])
+def get_user_profile(user_id):
+    """Get user behavior profile"""
+    profile = profile_manager.get_profile(user_id)
+    return jsonify(profile.to_dict())
