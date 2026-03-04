@@ -1,11 +1,13 @@
 """
 Authentication Module
-Handles JWT token creation/validation and password hashing
+Handles JWT token creation/validation, password hashing,
+and DB-backed token revocation.
 """
 
 import jwt
 import bcrypt
 import os
+import sqlite3
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import request, jsonify
@@ -13,39 +15,86 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Secret key for JWT (should be in .env file in production)
+# Secret key for JWT (set JWT_SECRET_KEY in .env; never use the default in production)
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-in-production-12345")
+
+
+# ===== DB-BACKED TOKEN REVOCATION BLOCKLIST =====
+
+
+class TokenBlocklist:
+    """
+    Persists revoked JWT tokens in SQLite so revocations survive server restarts.
+    Includes automatic cleanup of entries older than `ttl_hours` hours.
+    """
+
+    def __init__(self, db_path: str | None = None):
+        self._db_path = db_path or os.getenv("DATABASE_PATH", "database.db")
+        self._init_table()
+
+    def _conn(self):
+        conn = sqlite3.connect(self._db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_table(self):
+        conn = self._conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS revoked_tokens (
+                token_hash TEXT PRIMARY KEY,
+                revoked_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+    def revoke(self, token: str) -> None:
+        """Add *token* to the revocation list."""
+        conn = self._conn()
+        conn.execute(
+            "INSERT OR IGNORE INTO revoked_tokens (token_hash) VALUES (?)",
+            (token,),
+        )
+        conn.commit()
+        conn.close()
+
+    def is_revoked(self, token: str) -> bool:
+        """Return True if *token* has been revoked."""
+        conn = self._conn()
+        row = conn.execute(
+            "SELECT 1 FROM revoked_tokens WHERE token_hash = ?", (token,)
+        ).fetchone()
+        conn.close()
+        return row is not None
+
+    def cleanup(self, ttl_hours: int = 48) -> None:
+        """Remove revoked-token records older than *ttl_hours* hours."""
+        conn = self._conn()
+        conn.execute(
+            """DELETE FROM revoked_tokens
+               WHERE revoked_at < datetime('now', '-' || ? || ' hours')""",
+            (ttl_hours,),
+        )
+        conn.commit()
+        conn.close()
+
+
+# Global singleton — imported by route modules and token_required decorator
+token_blocklist = TokenBlocklist()
 
 
 # ===== PASSWORD HASHING =====
 
 
-def hash_password(password):
-    """
-    Hash password using bcrypt
-
-    Args:
-        password (str): Plain text password
-
-    Returns:
-        str: Hashed password
-    """
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt."""
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
     return hashed.decode("utf-8")
 
 
-def verify_password(password, hashed):
-    """
-    Verify password against hash
-
-    Args:
-        password (str): Plain text password
-        hashed (str): Hashed password
-
-    Returns:
-        bool: True if password matches, False otherwise
-    """
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify password against bcrypt hash."""
     try:
         return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
     except Exception as e:
@@ -56,19 +105,8 @@ def verify_password(password, hashed):
 # ===== JWT TOKEN MANAGEMENT =====
 
 
-def create_token(user_id, username, role, expires_in_hours=24):
-    """
-    Create JWT token
-
-    Args:
-        user_id (int): User ID
-        username (str): Username
-        role (str): User role
-        expires_in_hours (int): Token expiration time
-
-    Returns:
-        str: JWT token
-    """
+def create_token(user_id: int, username: str, role: str, expires_in_hours: int = 24) -> str:
+    """Create a signed JWT token."""
     payload = {
         "user_id": user_id,
         "username": username,
@@ -76,24 +114,13 @@ def create_token(user_id, username, role, expires_in_hours=24):
         "exp": datetime.utcnow() + timedelta(hours=expires_in_hours),
         "iat": datetime.utcnow(),
     }
-
-    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return token
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 
-def verify_token(token):
-    """
-    Verify and decode JWT token
-
-    Args:
-        token (str): JWT token
-
-    Returns:
-        dict: Decoded payload if valid, None otherwise
-    """
+def verify_token(token: str) -> dict | None:
+    """Verify and decode a JWT token. Returns None on failure."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         print("Token expired")
         return None
@@ -107,49 +134,31 @@ def verify_token(token):
 
 def token_required(f):
     """
-    Decorator to require valid JWT token
+    Decorator that requires a valid, non-revoked JWT token.
 
-    Usage:
-        @app.route("/protected")
-        @token_required
-        def protected_route():
-            # Access request.user_id, request.user_role
-            pass
+    Attaches ``request.user_id``, ``request.username``, ``request.user_role``
+    for use inside the decorated view function.
     """
 
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
 
-        # Get token from Authorization header
         if "Authorization" in request.headers:
             auth_header = request.headers["Authorization"]
-
-            # Remove 'Bearer ' prefix if present
-            if auth_header.startswith("Bearer "):
-                token = auth_header[7:]
-            else:
-                token = auth_header
+            token = auth_header[7:] if auth_header.startswith("Bearer ") else auth_header
 
         if not token:
             return jsonify({"error": "Authentication token is missing"}), 401
 
-        # Check token revocation blocklist (lazy import to avoid circular deps)
-        try:
-            from app import is_token_revoked
+        # Check DB-backed revocation list (no circular import needed)
+        if token_blocklist.is_revoked(token):
+            return jsonify({"error": "Token has been revoked — please log in again"}), 401
 
-            if is_token_revoked(token):
-                return jsonify({"error": "Token has been revoked — please log in again"}), 401
-        except ImportError:
-            pass  # Running outside app context (e.g. tests)
-
-        # Verify token
         payload = verify_token(token)
-
         if not payload:
             return jsonify({"error": "Invalid or expired token"}), 401
 
-        # Add user info to request object
         request.user_id = payload["user_id"]
         request.username = payload["username"]
         request.user_role = payload["role"]
@@ -159,25 +168,15 @@ def token_required(f):
     return decorated
 
 
-def role_required(allowed_roles):
+def role_required(allowed_roles: list):
     """
-    Decorator to require specific role(s)
-
-    Usage:
-        @app.route("/admin")
-        @token_required
-        @role_required(['Admin'])
-        def admin_route():
-            pass
-
-    Args:
-        allowed_roles (list): List of allowed roles
+    Decorator to require specific role(s).
+    Must be applied *after* ``@token_required``.
     """
 
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            # Check if user has required role
             if not hasattr(request, "user_role"):
                 return jsonify({"error": "Authentication required"}), 401
 
@@ -200,66 +199,33 @@ def role_required(allowed_roles):
     return decorator
 
 
-# ===== UTILITY FUNCTIONS =====
+# ===== UTILITY =====
 
 
-def validate_password_strength(password):
-    """
-    Validate password meets security requirements
-
-    Args:
-        password (str): Password to validate
-
-    Returns:
-        tuple: (is_valid, error_message)
-    """
+def validate_password_strength(password: str) -> tuple[bool, str | None]:
+    """Return (is_valid, error_message)."""
     if len(password) < 8:
         return False, "Password must be at least 8 characters long"
-
     if not any(c.isupper() for c in password):
         return False, "Password must contain at least one uppercase letter"
-
     if not any(c.islower() for c in password):
         return False, "Password must contain at least one lowercase letter"
-
     if not any(c.isdigit() for c in password):
         return False, "Password must contain at least one number"
-
     return True, None
 
 
 if __name__ == "__main__":
-    # Test the authentication module
+    # Quick smoke-test
     print("Testing Authentication Module...")
 
-    # Test password hashing
-    print("\n=== Password Hashing ===")
     password = "SecurePass123"
     hashed = hash_password(password)
-    print(f"Original: {password}")
-    print(f"Hashed: {hashed}")
-    print(f"Verification: {verify_password(password, hashed)}")
-    print(f"Wrong password: {verify_password('WrongPass', hashed)}")
+    print(f"Hash OK: {verify_password(password, hashed)}")
 
-    # Test token creation
-    print("\n=== JWT Token ===")
     token = create_token(1, "admin", "Admin")
-    print(f"Token: {token[:50]}...")
-
-    # Test token verification
     payload = verify_token(token)
-    print(f"Decoded: {payload}")
+    print(f"Token decoded: {payload}")
 
-    # Test password validation
-    print("\n=== Password Validation ===")
-    test_passwords = [
-        "weak",
-        "NoNumbers",
-        "nonumbers123",
-        "NOLOWERCASE123",
-        "ValidPass123",
-    ]
-
-    for pwd in test_passwords:
-        valid, msg = validate_password_strength(pwd)
-        print(f"{pwd}: {'✅ Valid' if valid else f'❌ {msg}'}")
+    token_blocklist.revoke(token)
+    print(f"Revoked: {token_blocklist.is_revoked(token)}")

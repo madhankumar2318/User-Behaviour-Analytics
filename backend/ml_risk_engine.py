@@ -78,7 +78,7 @@ class MLRiskEngine:
             hour = int(parts[0])
             minute = int(parts[1]) if len(parts) > 1 else 0
             return hour, minute
-        except:
+        except Exception:
             return 12, 0  # Default to noon if parsing fails
 
     def extract_features(self, logs):
@@ -138,12 +138,13 @@ class MLRiskEngine:
 
             # Convert score to 0-100 scale (more positive = more anomalous)
             # Normalize score to roughly 0-100 range
-            normalized_score = max(0, min(100, (-score * 50) + 50))
+            normalized_score = float(max(0, min(100, (-score * 50) + 50)))
 
             # Confidence based on how far from decision boundary
-            confidence = min(100, abs(score) * 50)
+            confidence = float(min(100, abs(score) * 50))
 
-            return normalized_score, is_anomaly, confidence
+            # Cast to Python-native types (sklearn returns numpy types)
+            return normalized_score, bool(is_anomaly), confidence
 
         except Exception as e:
             print(f"❌ Error predicting anomaly: {e}")

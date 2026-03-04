@@ -52,8 +52,8 @@ class RiskThresholdManager:
                 """,
                     default,
                 )
-            except:
-                pass
+            except Exception as exc:
+                print(f"⚠️  Could not insert default threshold {default[1]}: {exc}")
 
         conn.commit()
         conn.close()

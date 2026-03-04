@@ -32,5 +32,20 @@ env/
 .pytest_cache/
 *.sqlite3
 
+# Database files — never commit
+*.db
+*.db-wal
+*.db-shm
+
+# ML model artifacts — generated at runtime
+*.pkl
+*.pkl.locations.json
+
+# Test / coverage output
+backend/coverage.xml
+backend/.coverage
+backend/pytest_results.txt
+backend/npm_*.txt
+
 # OS generated files
 Thumbs.db

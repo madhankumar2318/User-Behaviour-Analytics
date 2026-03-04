@@ -4,6 +4,7 @@ Loads configuration from environment variables
 """
 
 import os
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -27,6 +28,8 @@ class Config:
     JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", 24))
 
+    _DEFAULT_JWT_KEY = "dev-secret-key-change-in-production"
+
     # CORS Configuration
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 
@@ -43,12 +46,20 @@ class Config:
 
     @classmethod
     def validate(cls):
-        """Validate critical configuration"""
-        if (
-            cls.JWT_SECRET_KEY == "dev-secret-key-change-in-production"
-            and cls.FLASK_ENV == "production"
-        ):
-            raise ValueError("JWT_SECRET_KEY must be changed in production!")
+        """Validate critical configuration and warn about insecure defaults."""
+        if cls.JWT_SECRET_KEY == cls._DEFAULT_JWT_KEY:
+            if cls.FLASK_ENV == "production":
+                raise ValueError(
+                    "[FATAL] JWT_SECRET_KEY must be changed before running in production! "
+                    "Set JWT_SECRET_KEY in your .env file."
+                )
+            else:
+                logging.warning(
+                    "\n" + "=" * 70 + "\n"
+                    "⚠️  SECURITY WARNING: Using default JWT_SECRET_KEY!\n"
+                    "   This is insecure. Set JWT_SECRET_KEY in your .env file.\n"
+                    "=" * 70
+                )
 
         if cls.FLASK_ENV == "production" and cls.DEBUG:
             raise ValueError("DEBUG must be False in production!")
