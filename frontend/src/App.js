@@ -5,6 +5,9 @@ import "./App.css";
 import Login from "./Login";
 import UserManagement from "./UserManagement";
 import ThemeToggle from "./ThemeToggle";
+import SidePanel from "./components/SidePanel";
+import LogsTable from "./components/LogsTable";
+import ChartsSection from "./components/ChartsSection";
 import {
   Chart as ChartJS,
   LineElement,
@@ -225,26 +228,6 @@ function App() {
       link.click();
       document.body.removeChild(link);
     }
-  };
-
-  const getStatusBadge = (status) => {
-    let color = "#10b981"; // Active
-    if (status === "LOCKED") color = "#ef4444";
-    if (status === "HIGH_RISK") color = "#f59e0b";
-
-    return (
-      <span style={{
-        padding: "4px 8px",
-        borderRadius: "12px",
-        backgroundColor: `${color}20`,
-        color: color,
-        fontWeight: "bold",
-        fontSize: "0.85rem",
-        border: `1px solid ${color}40`
-      }}>
-        {status}
-      </span>
-    );
   };
 
   // Sort handler
@@ -486,69 +469,14 @@ function App() {
           </div>
 
           {/* Charts Section */}
-          <div className="chart-section">
-            <div className="chart-controls">
-              <button
-                className={activeChartTab === 'timeline' ? 'active' : ''}
-                onClick={() => setActiveChartTab('timeline')}
-              >Timeline</button>
-              <button
-                className={activeChartTab === 'distribution' ? 'active' : ''}
-                onClick={() => setActiveChartTab('distribution')}
-              >Risk Distribution</button>
-              <button
-                className={activeChartTab === 'locations' ? 'active' : ''}
-                onClick={() => setActiveChartTab('locations')}
-              >Locations</button>
-              <button
-                className={activeChartTab === 'heatmap' ? 'active' : ''}
-                onClick={() => setActiveChartTab('heatmap')}
-              >24h Heatmap</button>
-            </div>
-
-            <div className="chart-container">
-              {activeChartTab === 'timeline' && <Line data={timelineData} options={{ responsive: true, plugins: { legend: { position: 'top' } } }} />}
-              {activeChartTab === 'distribution' && <div style={{ maxWidth: '400px', margin: '0 auto' }}><Pie data={riskDistribution} /></div>}
-              {activeChartTab === 'locations' && <Bar data={locationData} />}
-              {activeChartTab === 'heatmap' && (
-                <div className="heatmap-container">
-                  <div className="heatmap-grid">
-                    <div className="heatmap-y-labels">
-                      {heatmapData.days.map((day, i) => (
-                        <div key={i} className="heatmap-label">{day}</div>
-                      ))}
-                    </div>
-                    <div className="heatmap-cells">
-                      {heatmapData.grid.map((row, dayIdx) => (
-                        <div key={dayIdx} className="heatmap-row">
-                          {row.map((count, hourIdx) => {
-                            const maxCount = Math.max(...heatmapData.grid.flat());
-                            const intensity = maxCount > 0 ? count / maxCount : 0;
-                            const color = `rgba(167, 139, 250, ${intensity})`;
-                            return (
-                              <div
-                                key={hourIdx}
-                                className="heatmap-cell"
-                                style={{ backgroundColor: color }}
-                                title={`${heatmapData.days[dayIdx]} ${hourIdx}:00 - ${count} activities`}
-                              >
-                                {count > 0 ? count : ''}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="heatmap-x-labels">
-                    {heatmapData.hours.filter((_, i) => i % 2 === 0).map((hour, i) => (
-                      <div key={i} className="heatmap-label">{hour}h</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <ChartsSection
+            activeChartTab={activeChartTab}
+            setActiveChartTab={setActiveChartTab}
+            timelineData={timelineData}
+            riskDistribution={riskDistribution}
+            locationData={locationData}
+            heatmapData={heatmapData}
+          />
 
           {/* Controls Section */}
           <div className="controls-section">
@@ -591,137 +519,23 @@ function App() {
           </div>
 
           {/* Main Content Area */}
-          <div className="main-content">
-            {/* Logs Table */}
-            <table className="logs-table">
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort('user_id')} style={{ cursor: 'pointer' }}>
-                    User ID {sortConfig.key === 'user_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th onClick={() => handleSort('login_time')} style={{ cursor: 'pointer' }}>
-                    Time {sortConfig.key === 'login_time' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th onClick={() => handleSort('location')} style={{ cursor: 'pointer' }}>
-                    Location {sortConfig.key === 'location' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th onClick={() => handleSort('ip_address')} style={{ cursor: 'pointer' }}>
-                    IP {sortConfig.key === 'ip_address' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th onClick={() => handleSort('downloads')} style={{ cursor: 'pointer' }}>
-                    Downloads {sortConfig.key === 'downloads' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th onClick={() => handleSort('failed_attempts')} style={{ cursor: 'pointer' }}>
-                    Failed {sortConfig.key === 'failed_attempts' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>
-                    Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="6" style={{ textAlign: "center" }}>Loading logs...</td></tr>
-                ) : error ? (
-                  <tr><td colSpan="6" style={{ textAlign: "center", color: "#ef4444" }}>{error}</td></tr>
-                ) : filteredLogs.map((log, index) => (
-                  <tr
-                    key={index}
-                    onClick={() => setSelectedUser(log)}
-                    className={
-                      log.status === "LOCKED"
-                        ? "row-locked"
-                        : log.status === "HIGH_RISK"
-                          ? "row-high"
-                          : ""
-                    }
-                  >
-                    <td>{log.user_id}</td>
-                    <td>{log.login_time}</td>
-                    <td>{log.location}</td>
-                    <td style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{log.ip_address || 'N/A'}</td>
-                    <td>{log.downloads}</td>
-                    <td>{log.failed_attempts}</td>
-                    <td>{getStatusBadge(log.status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {filteredLogs.length === 0 && !loading && (
-              <div className="no-results">
-                <p>No logs match your current filters</p>
-              </div>
-            )}
-          </div>
+          <LogsTable
+            logs={filteredLogs}
+            loading={loading}
+            error={error}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            onRowClick={setSelectedUser}
+          />
         </div>
       )}
 
-      {/* Side Panel (kept outside of switcher to show on top if needed, though mostly relevant for dashboard) */}
-      {selectedUser && viewMode === 'dashboard' && (
-        <div className="side-panel">
-          <div className="panel-content">
-            <div className="panel-header">
-              <h2>User Behavioral Profile</h2>
-              <button className="close-btn" onClick={() => setSelectedUser(null)}>×</button>
-            </div>
-
-            <p><strong>User ID:</strong> {selectedUser.user_id}</p>
-            <p><strong>Login Time:</strong> {selectedUser.login_time}</p>
-            <p><strong>Location:</strong> {selectedUser.location}</p>
-            <p><strong>IP Address:</strong> <span style={{ color: '#00f5ff', fontFamily: 'monospace' }}>{selectedUser.ip_address || 'N/A'}</span></p>
-            <p><strong>Device:</strong> <span style={{ color: '#a78bfa', fontSize: '0.85rem', fontFamily: 'monospace' }}>{selectedUser.device_fingerprint || 'N/A'}</span></p>
-            <p><strong>Downloads:</strong> {selectedUser.downloads}</p>
-            <p><strong>Failed Attempts:</strong> {selectedUser.failed_attempts}</p>
-            <p><strong>Risk Score:</strong> {selectedUser.risk_score}</p>
-            <p><strong>Status:</strong> {selectedUser.status}</p>
-
-            {/* ML Insights */}
-            {selectedUser.ml_anomaly !== undefined && (
-              <div className="insight-box">
-                <h4>🤖 ML Insights</h4>
-                <p>
-                  <strong>Anomaly Detected:</strong>{" "}
-                  {selectedUser.ml_anomaly ? (
-                    <span style={{ color: "#dc2626" }}>⚠️ Yes</span>
-                  ) : (
-                    <span style={{ color: "#10b981" }}>✅ No</span>
-                  )}
-                </p>
-                {selectedUser.ml_confidence && (
-                  <p>
-                    <strong>ML Confidence:</strong> {selectedUser.ml_confidence}%
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Velocity Alerts */}
-            {selectedUser.velocity_alerts && (
-              <div className="insight-box warning">
-                <h4>⚡ Velocity Alerts</h4>
-                <p style={{ color: "#f59e0b" }}>
-                  ⚠️ Rapid activity or impossible travel detected
-                </p>
-              </div>
-            )}
-
-            {selectedUser.risk_reasons && (
-              <>
-                <h4>Risk Reasons:</h4>
-                <ul className="reasons-list">
-                  {selectedUser.risk_reasons.map((reason, i) => (
-                    <li key={i}>{reason}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            <div style={{ marginTop: '20px' }}>
-              <button className="view-profile-btn">View Full Profile</button>
-            </div>
-          </div>
-        </div>
+      {/* Side Panel */}
+      {viewMode === 'dashboard' && (
+        <SidePanel
+          selectedUser={selectedUser}
+          onClose={() => setSelectedUser(null)}
+        />
       )}
     </div>
   );
