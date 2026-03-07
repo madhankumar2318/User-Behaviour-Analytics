@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './Login.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+
 function Login({ onLogin }) {
     const [mode, setMode] = useState('signin'); // 'signin' | 'register'
 
@@ -56,7 +58,7 @@ function Login({ onLogin }) {
             // For now we try with the default admin token from localStorage.
             const token = localStorage.getItem('token');
             await axios.post(
-                'http://127.0.0.1:5000/users',
+                `${API_URL}/users`,
                 {
                     username: reg.username,
                     email: reg.email,

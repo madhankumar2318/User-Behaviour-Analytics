@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './UserManagement.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000';
+
 function UserManagement({ currentUser }) {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,7 +24,7 @@ function UserManagement({ currentUser }) {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const res = await axios.get('http://127.0.0.1:5000/users');
+            const res = await axios.get(`${API_URL}/users`);
             setUsers(res.data);
             setError(null);
         } catch (err) {
@@ -36,7 +38,7 @@ function UserManagement({ currentUser }) {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://127.0.0.1:5000/users', newUser);
+            await axios.post(`${API_URL}/users`, newUser);
             setShowCreateModal(false);
             setNewUser({
                 username: '',
@@ -55,7 +57,7 @@ function UserManagement({ currentUser }) {
         if (!window.confirm('Are you sure you want to delete this user?')) return;
 
         try {
-            await axios.delete(`http://127.0.0.1:5000/users/${userId}`);
+            await axios.delete(`${API_URL}/users/${userId}`);
             fetchUsers();
         } catch (err) {
             alert('Failed to delete user');

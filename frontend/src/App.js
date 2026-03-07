@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 import "./App.css";
 import Login from "./Login";
 import UserManagement from "./UserManagement";
@@ -64,7 +66,7 @@ function App() {
           axios.defaults.headers.common['Authorization'] = storedToken;
 
           // Verify token and get user info
-          const res = await axios.get("http://127.0.0.1:5000/auth/me");
+          const res = await axios.get(`${API_URL}/auth/me`);
           setCurrentUser(res.data);
           setIsAuthenticated(true);
           setToken(storedToken);
@@ -88,7 +90,7 @@ function App() {
 
   // Initialize socket connection once on mount
   useEffect(() => {
-    socketRef.current = io("http://127.0.0.1:5000");
+    socketRef.current = io(API_URL);
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -124,7 +126,7 @@ function App() {
 
   const login = async (username, password) => {
     try {
-      const res = await axios.post("http://127.0.0.1:5000/auth/login", {
+      const res = await axios.post(`${API_URL}/auth/login`, {
         username,
         password
       });
@@ -146,7 +148,7 @@ function App() {
   const logout = async () => {
     try {
       if (token) {
-        await axios.post("http://127.0.0.1:5000/auth/logout");
+        await axios.post(`${API_URL}/auth/logout`);
       }
     } catch (err) {
       console.error("Logout error:", err);
@@ -166,7 +168,7 @@ function App() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get("http://127.0.0.1:5000/get-logs");
+      const res = await axios.get(`${API_URL}/get-logs`);
       setLogs(res.data);
     } catch (err) {
       if (err.response && err.response.status === 401) {
@@ -183,7 +185,7 @@ function App() {
   const simulateActivity = async () => {
     try {
       setSimulating(true);
-      const res = await axios.post("http://127.0.0.1:5000/simulate-activity");
+      const res = await axios.post(`${API_URL}/simulate-activity`);
       showToast(`✅ Activity simulated for ${res.data.user_id}`, "SUCCESS");
     } catch (err) {
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
