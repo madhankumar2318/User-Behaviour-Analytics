@@ -849,3 +849,187 @@ tr:hover {
 .view-profile-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ===== SUMMARY STAT CARDS ===== */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: cardFadeUp 0.5s ease both;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.10s; }
+.stat-card:nth-child(3) { animation-delay: 0.15s; }
+.stat-card:nth-child(4) { animation-delay: 0.20s; }
+.stat-card:nth-child(5) { animation-delay: 0.25s; }
+
+@keyframes cardFadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Icon */
+.stat-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Body */
+.stat-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1;
+}
+
+.stat-card__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-secondary);
+}
+
+.stat-card__value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.stat-card__sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Ambient glow blob behind value */
+.stat-card__glow {
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0.15;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.stat-card:hover .stat-card__glow {
+  opacity: 0.3;
+}
+
+/* ── Colour variants ── */
+
+/* Total — cyan */
+.stat-card--total {
+  border-color: rgba(0, 245, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 245, 255, 0.08);
+}
+.stat-card--total .stat-card__value {
+  background: linear-gradient(135deg, #00f5ff, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-card--total .stat-card__glow { background: #00f5ff; }
+.stat-card--total:hover { box-shadow: 0 16px 40px rgba(0, 245, 255, 0.2); }
+
+/* Active — emerald */
+.stat-card--active {
+  border-color: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+}
+.stat-card--active .stat-card__value {
+  background: linear-gradient(135deg, #10b981, #6ee7b7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-card--active .stat-card__glow { background: #10b981; }
+.stat-card--active:hover { box-shadow: 0 16px 40px rgba(16, 185, 129, 0.2); }
+
+/* High Risk — amber */
+.stat-card--highrisk {
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.08);
+}
+.stat-card--highrisk .stat-card__value {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-card--highrisk .stat-card__glow { background: #f59e0b; }
+.stat-card--highrisk:hover { box-shadow: 0 16px 40px rgba(245, 158, 11, 0.2); }
+
+/* Locked — red */
+.stat-card--locked {
+  border-color: rgba(239, 68, 68, 0.25);
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.08);
+}
+.stat-card--locked .stat-card__value {
+  background: linear-gradient(135deg, #ef4444, #fca5a5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-card--locked .stat-card__glow { background: #ef4444; }
+.stat-card--locked:hover { box-shadow: 0 16px 40px rgba(239, 68, 68, 0.2); }
+
+/* Avg Risk — purple */
+.stat-card--avgrisk {
+  border-color: rgba(167, 139, 250, 0.25);
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.08);
+}
+.stat-card--avgrisk .stat-card__value {
+  background: linear-gradient(135deg, #a78bfa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-card--avgrisk .stat-card__glow { background: #a78bfa; }
+.stat-card--avgrisk:hover { box-shadow: 0 16px 40px rgba(167, 139, 250, 0.2); }
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 450px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+}

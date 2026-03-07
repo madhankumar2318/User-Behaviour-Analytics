@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 import "./App.css";
 import Login from "./Login";
 import UserManagement from "./UserManagement";
@@ -19,6 +17,8 @@ import {
   Legend
 } from "chart.js";
 import { Line, Pie, Bar } from "react-chartjs-2";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 
 
 ChartJS.register(
@@ -421,6 +421,70 @@ function App() {
       ) : (
         /* Dashboard Content */
         <div className="dashboard-grid">
+
+          {/* ── Summary Cards ── */}
+          <div className="summary-cards">
+            <div className="stat-card stat-card--total">
+              <div className="stat-card__icon">📋</div>
+              <div className="stat-card__body">
+                <span className="stat-card__label">Total Logs</span>
+                <span className="stat-card__value">{logs.length}</span>
+                <span className="stat-card__sub">all recorded sessions</span>
+              </div>
+              <div className="stat-card__glow" />
+            </div>
+
+            <div className="stat-card stat-card--active">
+              <div className="stat-card__icon">✅</div>
+              <div className="stat-card__body">
+                <span className="stat-card__label">Active</span>
+                <span className="stat-card__value">
+                  {logs.filter(l => l.status === 'ACTIVE').length}
+                </span>
+                <span className="stat-card__sub">normal sessions</span>
+              </div>
+              <div className="stat-card__glow" />
+            </div>
+
+            <div className="stat-card stat-card--highrisk">
+              <div className="stat-card__icon">⚠️</div>
+              <div className="stat-card__body">
+                <span className="stat-card__label">High Risk</span>
+                <span className="stat-card__value">
+                  {logs.filter(l => l.status === 'HIGH_RISK').length}
+                </span>
+                <span className="stat-card__sub">flagged sessions</span>
+              </div>
+              <div className="stat-card__glow" />
+            </div>
+
+            <div className="stat-card stat-card--locked">
+              <div className="stat-card__icon">🔒</div>
+              <div className="stat-card__body">
+                <span className="stat-card__label">Locked</span>
+                <span className="stat-card__value">
+                  {logs.filter(l => l.status === 'LOCKED').length}
+                </span>
+                <span className="stat-card__sub">blocked accounts</span>
+              </div>
+              <div className="stat-card__glow" />
+            </div>
+
+            <div className="stat-card stat-card--avgrisk">
+              <div className="stat-card__icon">🤖</div>
+              <div className="stat-card__body">
+                <span className="stat-card__label">Avg Risk Score</span>
+                <span className="stat-card__value">
+                  {logs.length > 0
+                    ? (logs.reduce((s, l) => s + (Number(l.risk_score) || 0), 0) / logs.length).toFixed(1)
+                    : '—'}
+                </span>
+                <span className="stat-card__sub">ML anomaly index</span>
+              </div>
+              <div className="stat-card__glow" />
+            </div>
+          </div>
+
           {/* Charts Section */}
           <div className="chart-section">
             <div className="chart-controls">
