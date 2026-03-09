@@ -1155,3 +1155,22 @@ tr:hover {
     grid-template-columns: 1fr;
   }
 }
+/* ===== LEAFLET MAP CUSTOMIZATION ===== */
+.leaflet-container {
+  background: #0f172a !important;
+  font-family: inherit;
+}
+
+.dark-popup .leaflet-popup-content-wrapper,
+.dark-popup .leaflet-popup-tip {
+  background: #1e293b;
+  color: white;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.custom-leaflet-icon {
+  background: transparent;
+  border: none;
+}
+

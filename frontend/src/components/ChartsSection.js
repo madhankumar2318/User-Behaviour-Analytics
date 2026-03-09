@@ -1,5 +1,6 @@
 import React from 'react';
 import { Line, Pie, Bar } from "react-chartjs-2";
+import LiveMap from './LiveMap'; // Import the new map component
 
 function ChartsSection({
     activeChartTab,
@@ -7,7 +8,8 @@ function ChartsSection({
     timelineData,
     riskDistribution,
     locationData,
-    heatmapData
+    heatmapData,
+    logs // We need the raw logs to render the map markers
 }) {
     return (
         <div className="chart-section">
@@ -28,12 +30,17 @@ function ChartsSection({
                     className={activeChartTab === 'heatmap' ? 'active' : ''}
                     onClick={() => setActiveChartTab('heatmap')}
                 >24h Heatmap</button>
+                <button
+                    className={activeChartTab === 'map' ? 'active' : ''}
+                    onClick={() => setActiveChartTab('map')}
+                >Live Map 🌍</button>
             </div>
 
             <div className="chart-container">
                 {activeChartTab === 'timeline' && <Line data={timelineData} options={{ responsive: true, plugins: { legend: { position: 'top' } } }} />}
                 {activeChartTab === 'distribution' && <div style={{ maxWidth: '400px', margin: '0 auto' }}><Pie data={riskDistribution} /></div>}
                 {activeChartTab === 'locations' && <Bar data={locationData} />}
+                {activeChartTab === 'map' && <LiveMap logs={logs} />}
                 {activeChartTab === 'heatmap' && (
                     <div className="heatmap-container">
                         <div className="heatmap-grid">

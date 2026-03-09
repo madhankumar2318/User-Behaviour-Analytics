@@ -8,18 +8,7 @@ import ThemeToggle from "./ThemeToggle";
 import SidePanel from "./components/SidePanel";
 import LogsTable from "./components/LogsTable";
 import ChartsSection from "./components/ChartsSection";
-import {
-  Chart as ChartJS,
-  LineElement,
-  PointElement,
-  BarElement,
-  ArcElement,
-  LinearScale,
-  CategoryScale,
-  Tooltip,
-  Legend
-} from "chart.js";
-import { Line, Pie, Bar } from "react-chartjs-2";
+import { Chart as ChartJS, LineElement, PointElement, BarElement, ArcElement, LinearScale, CategoryScale, Tooltip, Legend } from "chart.js";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 
@@ -476,6 +465,7 @@ function App() {
             riskDistribution={riskDistribution}
             locationData={locationData}
             heatmapData={heatmapData}
+            logs={logs}
           />
 
           {/* Controls Section */}
