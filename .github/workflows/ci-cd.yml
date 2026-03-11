@@ -38,7 +38,6 @@ jobs:
       env:
         JWT_SECRET_KEY: ci-test-secret-key-do-not-use-in-production
         FLASK_ENV: testing
-        DATABASE_PATH: ":memory:"
       run: |
         pytest --cov=. --cov-report=xml --ignore=test_api.py
 
@@ -77,7 +76,7 @@ jobs:
       working-directory: ./frontend
       env:
         CI: false                      # Treat warnings as warnings, not errors
-      run: npm test -- --coverage --watchAll=false --passWithNoTests
+      run: npm test -- --coverage --watchAll=false --passWithNoTests --forceExit --testTimeout=15000
 
     - name: Build
       working-directory: ./frontend
