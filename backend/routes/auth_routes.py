@@ -20,7 +20,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 # POST /auth/login
 # -------------------------
 @auth_bp.route("/login", methods=["POST"])
-@limiter.limit("10 per minute")
+@limiter.limit("30 per minute")
 def login():
     """User login with JWT authentication."""
     try:

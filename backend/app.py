@@ -35,6 +35,7 @@ from routes.audit_routes import audit_bp
 from routes.activity_routes import activity_bp
 from routes.ml_routes import ml_bp
 from routes.alert_routes import alerts_bp
+from routes.report_routes import report_bp
 
 load_dotenv()
 
@@ -69,6 +70,7 @@ app.register_blueprint(audit_bp)
 app.register_blueprint(activity_bp)
 app.register_blueprint(ml_bp)
 app.register_blueprint(alerts_bp)
+app.register_blueprint(report_bp)
 
 # -------------------------
 # Health check

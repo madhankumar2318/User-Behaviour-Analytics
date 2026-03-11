@@ -31,7 +31,13 @@ function Login({ onLogin }) {
         try {
             await onLogin(username, password);
         } catch (err) {
-            setLoginError(err.response?.data?.error || 'Invalid credentials. Please try again.');
+            if (err.response?.status === 429) {
+                setLoginError('Too many login attempts. Please wait a moment and try again.');
+            } else if (!err.response) {
+                setLoginError('Cannot reach the server. Make sure the backend is running.');
+            } else {
+                setLoginError(err.response?.data?.error || 'Invalid credentials. Please try again.');
+            }
             setLoginLoading(false);
         }
     };

@@ -1,6 +1,6 @@
 """
 Alerts Blueprint
-Routes: /send-alert  /test-alert  /alert-config
+Routes: /send-alert  /test-alert  /alert-config  /alerts/feed
 """
 
 import os
@@ -12,10 +12,55 @@ from auth import token_required, role_required
 from audit_logger import audit_logger
 from email_service import alert_service
 from team_notifications import team_notification_service as team_notifier
+from db import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 alerts_bp = Blueprint("alerts", __name__)
+
+
+# -------------------------
+# GET /alerts/feed
+# -------------------------
+@alerts_bp.route("/alerts/feed", methods=["GET"])
+@token_required
+def get_alerts_feed():
+    """Return the most recent HIGH_RISK and LOCKED activity logs.
+
+    Query params:
+        limit  (int, default 50) — Maximum number of alerts to return.
+    """
+    try:
+        limit = min(int(request.args.get("limit", 50)), 200)
+    except (TypeError, ValueError):
+        limit = 50
+
+    conn = get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT id, user_id, login_time, location, downloads,
+               failed_attempts, risk_score, status,
+               ip_address, device_fingerprint
+        FROM   logs
+        WHERE  status IN ('HIGH_RISK', 'LOCKED')
+        ORDER  BY id DESC
+        LIMIT  ?
+        """,
+        (limit,),
+    ).fetchall()
+    conn.close()
+
+    alerts = []
+    for row in rows:
+        d = dict(row)
+        # status may come back as None if the column was added later
+        if d.get("status") is None:
+            score = d.get("risk_score", 0) or 0
+            d["status"] = "LOCKED" if score >= 80 else "HIGH_RISK"
+        alerts.append(d)
+
+    return jsonify(alerts)
+
 
 
 # -------------------------

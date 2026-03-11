@@ -10,6 +10,7 @@ Routes:
 
 import os
 import random
+from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify
 
@@ -147,6 +148,9 @@ def log_activity():
     """Log a user activity event and run the full risk pipeline."""
     data = request.json or {}
 
+    # Always record the exact UTC moment the event was received
+    data["login_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+
     ip_address = data.get("ip_address", request.remote_addr)
     device_fingerprint = data.get("device_fingerprint", "")
 
@@ -214,20 +218,65 @@ def log_activity():
 @activity_bp.route("/get-logs", methods=["GET"])
 @token_required
 def get_logs():
-    """Return all activity logs enriched with rule-based risk scores."""
+    """Return all activity logs enriched with rule-based risk scores.
+
+    Supports optional pagination:
+        GET /get-logs?page=1&per_page=100
+    If page/per_page are omitted, all logs are returned.
+    """
+    from flask import request as _req
+
+    # --- Pagination params ---
+    try:
+        page = int(_req.args.get("page", 0))
+        per_page = int(_req.args.get("per_page", 0))
+    except (TypeError, ValueError):
+        page, per_page = 0, 0
+
+    # --- Fetch ALL logs once (O(n)) ---
     conn = get_db_connection()
-    logs = conn.execute("SELECT * FROM logs").fetchall()
+    all_rows = conn.execute("SELECT * FROM logs").fetchall()
     conn.close()
 
+    all_logs = [dict(r) for r in all_rows]
+
+    # Build per-user history lookup in Python (O(n)) instead of N separate queries
+    history_by_user: dict = {}
+    for log in all_logs:
+        history_by_user.setdefault(log["user_id"], []).append(
+            {
+                "login_time": log["login_time"],
+                "downloads": log["downloads"],
+                "location": log["location"],
+                "failed_attempts": log["failed_attempts"],
+            }
+        )
+
+    # Score each log using its in-memory history (no extra DB round trips)
     result = []
-    for row in logs:
-        log = dict(row)
-        user_history = _fetch_user_history(log["user_id"])
+    for log in all_logs:
+        user_history = history_by_user.get(log["user_id"], [])
         risk_score, risk_reasons = calculate_risk(log, user_history)
         log["risk_score"] = risk_score
         log["risk_reasons"] = risk_reasons
         log["status"] = _determine_status(risk_score)
         result.append(log)
+
+    total = len(result)
+
+    # Apply pagination if requested
+    if page > 0 and per_page > 0:
+        start = (page - 1) * per_page
+        result = result[start : start + per_page]
+        return jsonify(
+            {
+                "data": result,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "pages": (total + per_page - 1) // per_page,
+            }
+        )
 
     return jsonify(result)
 
@@ -240,7 +289,12 @@ def get_logs():
 @role_required(["Admin", "Analyst"])
 def simulate_activity():
     """Generate a random user activity event and run the full risk pipeline."""
-    user_ids = [f"user_{i:03d}" for i in range(1, 11)]
+    # Pull real usernames from the users table so simulation reflects actual users
+    conn = get_db_connection()
+    rows = conn.execute("SELECT username FROM users LIMIT 20").fetchall()
+    conn.close()
+    user_ids = [r["username"] for r in rows] if rows else [f"user_{i:03d}" for i in range(1, 11)]
+
     locations = [
         "New York", "London", "Tokyo", "Mumbai", "Berlin",
         "Singapore", "Sydney", "Toronto", "Paris", "Dubai",
@@ -257,9 +311,16 @@ def simulate_activity():
         downloads = random.randint(20, 50)
         failed_attempts = random.randint(3, 8)
 
+    # Use a realistic random time within the past 7 days for richer heatmap data
+    from random import randint
+    import random as _r
+    rand_offset_seconds = randint(0, 7 * 24 * 3600)
+    from datetime import timedelta
+    sim_time = (datetime.now(timezone.utc) - timedelta(seconds=rand_offset_seconds))
+
     data = {
         "user_id": random.choice(user_ids),
-        "login_time": f"{random.randint(0, 23):02d}:{random.randint(0, 59):02d}",
+        "login_time": sim_time.strftime("%Y-%m-%dT%H:%M:%S"),
         "location": random.choice(locations),
         "downloads": downloads,
         "failed_attempts": failed_attempts,

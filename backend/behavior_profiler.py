@@ -29,7 +29,7 @@ class UserProfile:
             hour = int(parts[0])
             minute = int(parts[1]) if len(parts) > 1 else 0
             return hour + (minute / 60.0)  # Convert to decimal hours
-        except:
+        except Exception:
             return 12.0  # Default to noon
 
     def calculate_statistics(self, values):

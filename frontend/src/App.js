@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import "./App.css";
@@ -8,6 +8,9 @@ import ThemeToggle from "./ThemeToggle";
 import SidePanel from "./components/SidePanel";
 import LogsTable from "./components/LogsTable";
 import ChartsSection from "./components/ChartsSection";
+import ErrorBoundary from "./components/ErrorBoundary";
+import AlertsPanel from "./components/AlertsPanel";
+import ReportModal from "./components/ReportModal";
 import { Chart as ChartJS, LineElement, PointElement, BarElement, ArcElement, LinearScale, CategoryScale, Tooltip, Legend } from "chart.js";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
@@ -47,6 +50,13 @@ function App() {
   const [simulating, setSimulating] = useState(false);
   const [activeChartTab, setActiveChartTab] = useState("timeline");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  // Alerts state
+  const [alerts, setAlerts] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Report modal
+  const [showReport, setShowReport] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
@@ -94,12 +104,16 @@ function App() {
     if (!isAuthenticated) return;
 
     fetchLogs();
+    fetchAlerts();
 
     const handleNewActivity = (newLog) => {
       setLogs((prev) => [...prev, newLog]);
 
       if (newLog.status === "HIGH_RISK" || newLog.status === "LOCKED") {
-        showToast(`🚨 ${newLog.status} Alert: ${newLog.user_id}`, newLog.status);
+        showToast(`\uD83D\uDEA8 ${newLog.status} Alert: ${newLog.user_id}`, newLog.status);
+        // Prepend to alerts list and increment unread badge
+        setAlerts((prev) => [newLog, ...prev].slice(0, 200));
+        setUnreadCount((prev) => prev + 1);
       }
     };
 
@@ -174,6 +188,15 @@ function App() {
     }
   };
 
+  const fetchAlerts = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/alerts/feed?limit=50`);
+      setAlerts(res.data);
+    } catch (err) {
+      console.error("Failed to fetch alerts feed:", err);
+    }
+  };
+
   const simulateActivity = async () => {
     try {
       setSimulating(true);
@@ -195,6 +218,20 @@ function App() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
   };
+
+  // Alerts handlers
+  const handleDismissAlert = useCallback((index) => {
+    setAlerts(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleClearAlerts = useCallback(() => {
+    setAlerts([]);
+    setUnreadCount(0);
+  }, []);
+
+  const handleAlertsOpen = useCallback(() => {
+    setUnreadCount(0);
+  }, []);
 
   const exportToCSV = () => {
     const headers = ['User ID', 'Login Time', 'Location', 'Downloads', 'Failed Attempts', 'Risk Score', 'Status'];
@@ -377,6 +414,26 @@ function App() {
             </div>
           )}
 
+          {/* Alerts Bell */}
+          <AlertsPanel
+            alerts={alerts}
+            unreadCount={unreadCount}
+            onDismiss={handleDismissAlert}
+            onClearAll={handleClearAlerts}
+            onOpen={handleAlertsOpen}
+          />
+
+          {/* Download Report — Admin & Analyst only */}
+          {['Admin', 'Analyst'].includes(currentUser?.role) && (
+            <button
+              className="report-download-btn"
+              onClick={() => setShowReport(true)}
+              title="Download PDF Report"
+            >
+              📄 Report
+            </button>
+          )}
+
           <div className="user-info">
             <span className="user-name">{currentUser?.full_name || currentUser?.username}</span>
             <span className="user-role badge">{currentUser?.role}</span>
@@ -387,137 +444,149 @@ function App() {
         </div>
       </header>
 
+      {/* Report modal */}
+      {showReport && (
+        <ReportModal
+          token={token}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+
       {/* Main Content Switcher */}
       {viewMode === 'users' && currentUser?.role === 'Admin' ? (
-        <UserManagement currentUser={currentUser} />
+        <ErrorBoundary>
+          <UserManagement currentUser={currentUser} />
+        </ErrorBoundary>
       ) : (
         /* Dashboard Content */
-        <div className="dashboard-grid">
+        <ErrorBoundary>
+          <div className="dashboard-grid">
 
-          {/* ── Summary Cards ── */}
-          <div className="summary-cards">
-            <div className="stat-card stat-card--total">
-              <div className="stat-card__icon">📋</div>
-              <div className="stat-card__body">
-                <span className="stat-card__label">Total Logs</span>
-                <span className="stat-card__value">{logs.length}</span>
-                <span className="stat-card__sub">all recorded sessions</span>
+            {/* ── Summary Cards ── */}
+            <div className="summary-cards">
+              <div className="stat-card stat-card--total">
+                <div className="stat-card__icon">📋</div>
+                <div className="stat-card__body">
+                  <span className="stat-card__label">Total Logs</span>
+                  <span className="stat-card__value">{logs.length}</span>
+                  <span className="stat-card__sub">all recorded sessions</span>
+                </div>
+                <div className="stat-card__glow" />
               </div>
-              <div className="stat-card__glow" />
-            </div>
 
-            <div className="stat-card stat-card--active">
-              <div className="stat-card__icon">✅</div>
-              <div className="stat-card__body">
-                <span className="stat-card__label">Active</span>
-                <span className="stat-card__value">
-                  {logs.filter(l => l.status === 'ACTIVE').length}
-                </span>
-                <span className="stat-card__sub">normal sessions</span>
+              <div className="stat-card stat-card--active">
+                <div className="stat-card__icon">✅</div>
+                <div className="stat-card__body">
+                  <span className="stat-card__label">Active</span>
+                  <span className="stat-card__value">
+                    {logs.filter(l => l.status === 'ACTIVE').length}
+                  </span>
+                  <span className="stat-card__sub">normal sessions</span>
+                </div>
+                <div className="stat-card__glow" />
               </div>
-              <div className="stat-card__glow" />
-            </div>
 
-            <div className="stat-card stat-card--highrisk">
-              <div className="stat-card__icon">⚠️</div>
-              <div className="stat-card__body">
-                <span className="stat-card__label">High Risk</span>
-                <span className="stat-card__value">
-                  {logs.filter(l => l.status === 'HIGH_RISK').length}
-                </span>
-                <span className="stat-card__sub">flagged sessions</span>
+              <div className="stat-card stat-card--highrisk">
+                <div className="stat-card__icon">⚠️</div>
+                <div className="stat-card__body">
+                  <span className="stat-card__label">High Risk</span>
+                  <span className="stat-card__value">
+                    {logs.filter(l => l.status === 'HIGH_RISK').length}
+                  </span>
+                  <span className="stat-card__sub">flagged sessions</span>
+                </div>
+                <div className="stat-card__glow" />
               </div>
-              <div className="stat-card__glow" />
-            </div>
 
-            <div className="stat-card stat-card--locked">
-              <div className="stat-card__icon">🔒</div>
-              <div className="stat-card__body">
-                <span className="stat-card__label">Locked</span>
-                <span className="stat-card__value">
-                  {logs.filter(l => l.status === 'LOCKED').length}
-                </span>
-                <span className="stat-card__sub">blocked accounts</span>
+              <div className="stat-card stat-card--locked">
+                <div className="stat-card__icon">🔒</div>
+                <div className="stat-card__body">
+                  <span className="stat-card__label">Locked</span>
+                  <span className="stat-card__value">
+                    {logs.filter(l => l.status === 'LOCKED').length}
+                  </span>
+                  <span className="stat-card__sub">blocked accounts</span>
+                </div>
+                <div className="stat-card__glow" />
               </div>
-              <div className="stat-card__glow" />
-            </div>
 
-            <div className="stat-card stat-card--avgrisk">
-              <div className="stat-card__icon">🤖</div>
-              <div className="stat-card__body">
-                <span className="stat-card__label">Avg Risk Score</span>
-                <span className="stat-card__value">
-                  {logs.length > 0
-                    ? (logs.reduce((s, l) => s + (Number(l.risk_score) || 0), 0) / logs.length).toFixed(1)
-                    : '—'}
-                </span>
-                <span className="stat-card__sub">ML anomaly index</span>
+              <div className="stat-card stat-card--avgrisk">
+                <div className="stat-card__icon">🤖</div>
+                <div className="stat-card__body">
+                  <span className="stat-card__label">Avg Risk Score</span>
+                  <span className="stat-card__value">
+                    {logs.length > 0
+                      ? (logs.reduce((s, l) => s + (Number(l.risk_score) || 0), 0) / logs.length).toFixed(1)
+                      : '—'}
+                  </span>
+                  <span className="stat-card__sub">ML anomaly index</span>
+                </div>
+                <div className="stat-card__glow" />
               </div>
-              <div className="stat-card__glow" />
-            </div>
-          </div>
-
-          {/* Charts Section */}
-          <ChartsSection
-            activeChartTab={activeChartTab}
-            setActiveChartTab={setActiveChartTab}
-            timelineData={timelineData}
-            riskDistribution={riskDistribution}
-            locationData={locationData}
-            heatmapData={heatmapData}
-            logs={logs}
-          />
-
-          {/* Controls Section */}
-          <div className="controls-section">
-            <div className="filter-controls">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="HIGH_RISK">High Risk</option>
-                <option value="LOCKED">Locked</option>
-              </select>
-
-              <input
-                type="text"
-                placeholder="Search users or locations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
             </div>
 
-            <div className="action-buttons">
-              <button className="export-btn" onClick={exportToCSV}>
-                📥 Export CSV
-              </button>
+            {/* Charts Section */}
+            <ChartsSection
+              activeChartTab={activeChartTab}
+              setActiveChartTab={setActiveChartTab}
+              timelineData={timelineData}
+              riskDistribution={riskDistribution}
+              locationData={locationData}
+              heatmapData={heatmapData}
+              logs={logs}
+            />
 
-              {(currentUser?.role === 'Admin' || currentUser?.role === 'Analyst') && (
-                <button
-                  className="simulate-btn"
-                  onClick={simulateActivity}
-                  disabled={simulating}
+            {/* Controls Section */}
+            <div className="controls-section">
+              <div className="filter-controls">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="filter-select"
                 >
-                  {simulating ? '🎲 Simulating...' : '🎲 Simulate Activity'}
-                </button>
-              )}
-            </div>
-          </div>
+                  <option value="ALL">All Statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="HIGH_RISK">High Risk</option>
+                  <option value="LOCKED">Locked</option>
+                </select>
 
-          {/* Main Content Area */}
-          <LogsTable
-            logs={filteredLogs}
-            loading={loading}
-            error={error}
-            sortConfig={sortConfig}
-            onSort={handleSort}
-            onRowClick={setSelectedUser}
-          />
-        </div>
+                <input
+                  type="text"
+                  placeholder="Search users or locations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+
+              <div className="action-buttons">
+                <button className="export-btn" onClick={exportToCSV}>
+                  📥 Export CSV
+                </button>
+
+                {(currentUser?.role === 'Admin' || currentUser?.role === 'Analyst') && (
+                  <button
+                    className="simulate-btn"
+                    onClick={simulateActivity}
+                    disabled={simulating}
+                  >
+                    {simulating ? '🎲 Simulating...' : '🎲 Simulate Activity'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Main Content Area */}
+            <LogsTable
+              logs={filteredLogs}
+              loading={loading}
+              error={error}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              onRowClick={setSelectedUser}
+            />
+          </div>
+        </ErrorBoundary>
       )}
 
       {/* Side Panel */}

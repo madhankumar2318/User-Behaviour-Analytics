@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -25,9 +25,21 @@ const icons = {
 
 // Component to dynamically fit bounds if needed, or simply render map
 function LiveMap({ logs }) {
-    // We want to render the latest logs on top, so we reverse a copy of the array for rendering
-    // or just rely on Leaflet's z-index.
-    const recentLogs = [...logs].slice(-500); // Limit to last 500 for performance
+    // Limit to last 500 logs for performance
+    const recentLogs = useMemo(() => [...logs].slice(-500), [logs]);
+
+    // Memoize jitter so markers don't jump on every re-render
+    const markersData = useMemo(() => {
+        return recentLogs.map((log) => {
+            const coords = getCoordinates(log.location);
+            return {
+                ...log,
+                lat: coords[0] + (Math.random() - 0.5) * 0.1,
+                lng: coords[1] + (Math.random() - 0.5) * 0.1,
+            };
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recentLogs.length]); // Recompute only when the number of logs changes
 
     return (
         <div style={{ height: '500px', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
@@ -44,34 +56,27 @@ function LiveMap({ logs }) {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 />
 
-                {recentLogs.map((log, index) => {
-                    const coords = getCoordinates(log.location);
-
-                    // Jitter coordinates slightly so markers at the exact same city don't completely overlap
-                    const jitterLat = coords[0] + (Math.random() - 0.5) * 0.1;
-                    const jitterLng = coords[1] + (Math.random() - 0.5) * 0.1;
-
-                    return (
-                        <Marker
-                            key={`map-marker-${index}-${log.id || index}`}
-                            position={[jitterLat, jitterLng]}
-                            icon={icons[log.status] || icons.ACTIVE}
-                        >
-                            <Popup className="dark-popup">
-                                <div>
-                                    <strong style={{ color: '#00f5ff' }}>{log.user_id}</strong><br />
-                                    <span style={{ color: '#a78bfa' }}>{log.location}</span><br />
-                                    Status: {log.status}<br />
-                                    Risk Score: {log.risk_score}<br />
-                                    Time: {log.login_time}
-                                </div>
-                            </Popup>
-                        </Marker>
-                    );
-                })}
+                {markersData.map((log, index) => (
+                    <Marker
+                        key={`map-marker-${index}-${log.id || index}`}
+                        position={[log.lat, log.lng]}
+                        icon={icons[log.status] || icons.ACTIVE}
+                    >
+                        <Popup className="dark-popup">
+                            <div>
+                                <strong style={{ color: '#00f5ff' }}>{log.user_id}</strong><br />
+                                <span style={{ color: '#a78bfa' }}>{log.location}</span><br />
+                                Status: {log.status}<br />
+                                Risk Score: {log.risk_score}<br />
+                                Time: {log.login_time}
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
             </MapContainer>
         </div>
     );
 }
 
 export default LiveMap;
+
