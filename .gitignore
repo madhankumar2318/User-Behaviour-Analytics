@@ -49,3 +49,11 @@ backend/npm_*.txt
 
 # OS generated files
 Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+
+# Draft notes / temp files
+*_to_add.txt
+*_notes.txt
