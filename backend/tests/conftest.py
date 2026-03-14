@@ -21,8 +21,20 @@ os.environ["DATABASE_PATH"] = _tmp.name
 
 
 @pytest.fixture(scope="session", autouse=True)
-def cleanup_temp_db():
-    """Remove the temp database file after all tests finish."""
+def setup_test_db():
+    """Ensure all required tables are created in the setup test DB."""
+    # Import locally to avoid circular dependencies when conftest runs too early
+    from db import create_table
+    from user_manager import user_manager
+    from auth import create_revoked_tokens_table
+    from behavior_profiler import profile_manager
+    from audit_logger import audit_logger
+    
+    create_table()
+    user_manager.create_table_if_not_exists()
+    create_revoked_tokens_table()
+    profile_manager.create_table_if_not_exists()
+    audit_logger.create_table_if_not_exists()
     yield
     try:
         os.unlink(_tmp.name)
