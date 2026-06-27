@@ -3,13 +3,14 @@ Risk Threshold Configuration
 Allows custom risk threshold settings per user or globally
 """
 
+import os
 import sqlite3
 import json
 
 
 class RiskThresholdManager:
-    def __init__(self, db_path="database.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.getenv("DATABASE_PATH", "database.db")
         self.init_table()
 
     def init_table(self):

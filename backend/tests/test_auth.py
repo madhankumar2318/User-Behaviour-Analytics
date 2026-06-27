@@ -2,6 +2,7 @@
 Unit Tests for Authentication
 """
 
+import os
 import pytest
 import json
 import sqlite3
@@ -12,7 +13,8 @@ from user_manager import user_manager
 def _delete_user_by_username(username):
     """Helper: remove a user by username so tests can re-create them cleanly."""
     try:
-        conn = sqlite3.connect("database.db")
+        db_path = os.getenv("DATABASE_PATH", "database.db")
+        conn = sqlite3.connect(db_path)
         conn.execute("DELETE FROM users WHERE username = ?", (username,))
         conn.commit()
         conn.close()

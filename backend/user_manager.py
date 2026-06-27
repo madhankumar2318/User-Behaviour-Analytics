@@ -3,14 +3,15 @@ User Manager Module
 Handles user CRUD operations and management
 """
 
+import os
 import sqlite3
 from datetime import datetime
 from auth import hash_password, verify_password, validate_password_strength
 
 
 class UserManager:
-    def __init__(self, db_path="database.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.getenv("DATABASE_PATH", "database.db")
         self._init_users_table()
 
     def _get_connection(self):

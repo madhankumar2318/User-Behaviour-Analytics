@@ -3,14 +3,15 @@ Audit Logger Module
 Tracks all user actions for security and compliance
 """
 
+import os
 import sqlite3
 from datetime import datetime
 import json
 
 
 class AuditLogger:
-    def __init__(self, db_path="database.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.getenv("DATABASE_PATH", "database.db")
         self._init_audit_table()
 
     def _get_connection(self):

@@ -5,6 +5,7 @@ risk breakdown, and high-risk activity listing.
 """
 
 from datetime import datetime, timedelta
+import os
 import sqlite3
 import io
 
@@ -47,8 +48,8 @@ def _styles():
 
 
 class ReportGenerator:
-    def __init__(self, db_path="database.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.getenv("DATABASE_PATH", "database.db")
 
     def _conn(self):
         conn = sqlite3.connect(self.db_path)

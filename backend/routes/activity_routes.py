@@ -41,6 +41,40 @@ def _determine_status(risk_score: float) -> str:
     return "ACTIVE"
 
 
+def _get_ip_geolocation(ip_address: str) -> str:
+    """Resolve an IP address to a physical location (City, Country).
+
+    If the IP is a local loopback or local network IP, queries ip-api.com
+    without specifying an IP to geolocate the server's public gateway.
+    """
+    import requests
+    try:
+        is_local = (
+            not ip_address or
+            ip_address in ("127.0.0.1", "localhost", "::1") or
+            ip_address.startswith("192.168.") or
+            ip_address.startswith("10.") or
+            ip_address.startswith("172.16.") or
+            ip_address.startswith("172.31.")
+        )
+        url = "http://ip-api.com/json/" if is_local else f"http://ip-api.com/json/{ip_address}"
+        resp = requests.get(url, timeout=3.0)
+        if resp.status_code == 200:
+            res = resp.json()
+            if res.get("status") == "success":
+                city = res.get("city", "")
+                country = res.get("country", "")
+                if city and country:
+                    return f"{city}, {country}"
+                elif country:
+                    return country
+                elif city:
+                    return city
+    except Exception as e:
+        print(f"⚠️ Geolocation service failed: {e}")
+    return "Unknown"
+
+
 def _run_risk_pipeline(data: dict, user_history: list) -> dict:
     """
     Run the full four-signal risk pipeline and return a results dict.
@@ -151,8 +185,20 @@ def log_activity():
     # Always record the exact UTC moment the event was received
     data["login_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
-    ip_address = data.get("ip_address", request.remote_addr)
+    # Extract client IP, checking X-Forwarded-For if behind a proxy
+    ip_address = data.get("ip_address")
+    if not ip_address:
+        if request.headers.getlist("X-Forwarded-For"):
+            ip_address = request.headers.getlist("X-Forwarded-For")[0].split(",")[0].strip()
+        else:
+            ip_address = request.remote_addr
+
     device_fingerprint = data.get("device_fingerprint", "")
+
+    # Geolocate if location is omitted, empty, or set to "detect"
+    loc = data.get("location")
+    if not loc or loc == "detect":
+        data["location"] = _get_ip_geolocation(ip_address)
 
     # Persist log
     conn = get_db_connection()

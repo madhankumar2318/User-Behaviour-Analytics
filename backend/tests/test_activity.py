@@ -3,6 +3,7 @@ Tests for Activity Endpoints
 Tests: /log-activity, /get-logs, /simulate-activity
 """
 
+import os
 import json
 import sqlite3
 import pytest
@@ -13,7 +14,8 @@ from user_manager import user_manager
 
 def _delete_user(username):
     try:
-        conn = sqlite3.connect("database.db")
+        db_path = os.getenv("DATABASE_PATH", "database.db")
+        conn = sqlite3.connect(db_path)
         conn.execute("DELETE FROM users WHERE username = ?", (username,))
         conn.commit()
         conn.close()

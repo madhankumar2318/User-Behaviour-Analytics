@@ -1,0 +1,125 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\kumar\AppData\Local\Programs\Python\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: D:\GIT\User-Behavior-Analytics\backend
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.10.0, cov-7.0.0
+collecting ... collected 33 items
+
+tests/test_activity.py::test_get_logs_returns_list PASSED                [  3%]
+tests/test_activity.py::test_get_logs_requires_auth PASSED               [  6%]
+tests/test_activity.py::test_simulate_activity_success FAILED            [  9%]
+tests/test_activity.py::test_simulate_activity_requires_auth PASSED      [ 12%]
+tests/test_activity.py::test_simulate_activity_viewer_denied PASSED      [ 15%]
+tests/test_activity.py::test_log_activity_success PASSED                 [ 18%]
+tests/test_activity.py::test_log_activity_missing_field PASSED           [ 21%]
+tests/test_auth.py::test_login_success PASSED                            [ 24%]
+tests/test_auth.py::test_login_invalid_credentials PASSED                [ 27%]
+tests/test_auth.py::test_login_missing_fields PASSED                     [ 30%]
+tests/test_auth.py::test_protected_route_without_token PASSED            [ 33%]
+tests/test_auth.py::test_protected_route_with_token PASSED               [ 36%]
+tests/test_auth.py::test_health_endpoint PASSED                          [ 39%]
+tests/test_auth.py::test_token_revocation_after_logout PASSED            [ 42%]
+tests/test_auth.py::test_get_current_user PASSED                         [ 45%]
+tests/test_ml_engine.py::test_ml_engine_initialization PASSED            [ 48%]
+tests/test_ml_engine.py::test_predict_anomaly_with_data PASSED           [ 51%]
+tests/test_ml_engine.py::test_model_stats PASSED                         [ 54%]
+tests/test_risk.py::TestVelocityChecker::test_rapid_logins_detected PASSED [ 57%]
+tests/test_risk.py::TestVelocityChecker::test_no_rapid_logins_spread_out PASSED [ 60%]
+tests/test_risk.py::TestVelocityChecker::test_rapid_logins_empty_history PASSED [ 63%]
+tests/test_risk.py::TestVelocityChecker::test_impossible_travel_detected PASSED [ 66%]
+tests/test_risk.py::TestVelocityChecker::test_same_location_is_not_impossible PASSED [ 69%]
+tests/test_risk.py::TestVelocityChecker::test_realistic_travel_not_flagged PASSED [ 72%]
+tests/test_risk.py::TestVelocityChecker::test_impossible_travel_no_last_log PASSED [ 75%]
+tests/test_risk.py::TestVelocityChecker::test_concurrent_sessions_detected PASSED [ 78%]
+tests/test_risk.py::TestVelocityChecker::test_perform_all_checks_structure PASSED [ 81%]
+tests/test_risk.py::TestVelocityChecker::test_perform_all_checks_impossible_travel_high_severity PASSED [ 84%]
+tests/test_risk.py::TestMLRiskEngine::test_untrained_engine_returns_zeros PASSED [ 87%]
+tests/test_risk.py::TestMLRiskEngine::test_training_needs_minimum_10_logs PASSED [ 90%]
+tests/test_risk.py::TestMLRiskEngine::test_train_succeeds_with_enough_data PASSED [ 93%]
+tests/test_risk.py::TestMLRiskEngine::test_predict_returns_correct_types_after_training PASSED [ 96%]
+tests/test_risk.py::TestMLRiskEngine::test_get_model_stats_structure PASSED [100%]
+
+================================== FAILURES ===================================
+_______________________ test_simulate_activity_success ________________________
+
+client = <FlaskClient <Flask 'app'>>
+auth_headers = {'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxNDQsInVzZXJuYW1lIjoiYWN0aXZpdHl0ZXN0dXNlciIsInJvbGUiOiJBZG1pbiIsImV4cCI6MTc3MzU1NjI5MSwiaWF0IjoxNzczNDY5ODkxfQ.3DUco487x8gUM_E4xNfSyzVJHm9cFQXfLWApb3EdkMo'}
+
+    def test_simulate_activity_success(client, auth_headers):
+        """POST /simulate-activity should return risk_score and status."""
+        res = client.post("/simulate-activity", headers=auth_headers)
+>       assert res.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <WrapperTestResponse streamed [500 INTERNAL SERVER ERROR]>.status_code
+
+tests\test_activity.py:72: AssertionError
+------------------------------ Captured log call ------------------------------
+ERROR    error_handlers:error_handlers.py:124 Unexpected Error: no such table: users
+Traceback (most recent call last):
+  File "C:\Users\kumar\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kumar\AppData\Local\Programs\Python\Python311\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\GIT\User-Behavior-Analytics\backend\auth.py", line 166, in decorated
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "D:\GIT\User-Behavior-Analytics\backend\auth.py", line 195, in decorated
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "D:\GIT\User-Behavior-Analytics\backend\routes\activity_routes.py", line 294, in simulate_activity
+    rows = conn.execute("SELECT username FROM users LIMIT 20").fetchall()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: users
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.0-final-0 _______________
+
+Name                        Stmts   Miss  Cover
+-----------------------------------------------
+app.py                         64     20    69%
+audit_logger.py                99     59    40%
+auth.py                       111     24    78%
+behavior_profiler.py          180     66    63%
+config.py                      32     32     0%
+create_admin.py                15     15     0%
+db.py                          15      0   100%
+email_service.py               53     37    30%
+error_handlers.py              58     22    62%
+extensions.py                   5      0   100%
+migrate_database.py            21     21     0%
+ml_risk_engine.py             102     25    75%
+models.py                       0      0   100%
+report_generator.py           113     86    24%
+reset_admin_password.py        18     18     0%
+reset_database.py              20     20     0%
+risk_engine.py                 48     32    33%
+risk_thresholds.py             51     51     0%
+routes\__init__.py              0      0   100%
+routes\activity_routes.py     131     42    68%
+routes\alert_routes.py         74     49    34%
+routes\audit_routes.py         42     25    40%
+routes\auth_routes.py          74     26    65%
+routes\ml_routes.py            34     15    56%
+routes\report_routes.py        39     30    23%
+routes\user_routes.py          92     61    34%
+swagger_config.py               5      0   100%
+team_notifications.py          50     37    26%
+test_api.py                    17     17     0%
+tests\__init__.py               0      0   100%
+tests\conftest.py              15      2    87%
+tests\test_activity.py         68      6    91%
+tests\test_auth.py             87      2    98%
+tests\test_ml_engine.py        18      0   100%
+tests\test_risk.py             94      0   100%
+user_manager.py               154     89    42%
+validation.py                  42     42     0%
+velocity_checker.py           111     28    75%
+-----------------------------------------------
+TOTAL                        2152    999    54%
+Coverage XML written to file coverage.xml
+=========================== short test summary info ===========================
+FAILED tests/test_activity.py::test_simulate_activity_success - assert 500 ==...
+======================== 1 failed, 32 passed in 7.70s =========================

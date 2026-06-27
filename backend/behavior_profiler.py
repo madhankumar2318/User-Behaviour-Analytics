@@ -95,7 +95,7 @@ class UserProfile:
         Returns score 0-100 (higher = more deviation)
         """
         if self.baseline["avg_login_hour"] is None:
-            return 0  # No baseline yet
+            return 0, []  # No baseline yet
 
         score = 0
         reasons = []
@@ -176,9 +176,9 @@ class ProfileManager:
     Profiles are loaded from DB on startup and saved after every update.
     """
 
-    DB_PATH = "database.db"
-
-    def __init__(self):
+    def __init__(self, db_path=None):
+        import os
+        self.db_path = db_path or os.getenv("DATABASE_PATH", "database.db")
         self.profiles = {}  # user_id -> UserProfile
         self._ensure_table()
         self._load_from_db()
@@ -190,7 +190,7 @@ class ProfileManager:
     def _get_conn(self):
         import sqlite3
 
-        conn = sqlite3.connect(self.DB_PATH)
+        conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 

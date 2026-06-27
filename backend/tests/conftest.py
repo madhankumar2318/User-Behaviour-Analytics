@@ -26,15 +26,15 @@ def setup_test_db():
     # Import locally to avoid circular dependencies when conftest runs too early
     from db import create_table
     from user_manager import user_manager
-    from auth import create_revoked_tokens_table
+    from auth import token_blocklist
     from behavior_profiler import profile_manager
     from audit_logger import audit_logger
     
     create_table()
-    user_manager.create_table_if_not_exists()
-    create_revoked_tokens_table()
-    profile_manager.create_table_if_not_exists()
-    audit_logger.create_table_if_not_exists()
+    user_manager._init_users_table()
+    token_blocklist._init_table()
+    profile_manager._ensure_table()
+    audit_logger._init_audit_table()
     yield
     try:
         os.unlink(_tmp.name)

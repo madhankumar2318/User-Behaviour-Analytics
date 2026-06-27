@@ -563,16 +563,6 @@ function App() {
                 <button className="export-btn" onClick={exportToCSV}>
                   📥 Export CSV
                 </button>
-
-                {(currentUser?.role === 'Admin' || currentUser?.role === 'Analyst') && (
-                  <button
-                    className="simulate-btn"
-                    onClick={simulateActivity}
-                    disabled={simulating}
-                  >
-                    {simulating ? '🎲 Simulating...' : '🎲 Simulate Activity'}
-                  </button>
-                )}
               </div>
             </div>
 
