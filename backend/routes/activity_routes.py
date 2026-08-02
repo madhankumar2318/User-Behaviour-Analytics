@@ -44,8 +44,8 @@ def _determine_status(risk_score: float) -> str:
 def _get_ip_geolocation(ip_address: str) -> str:
     """Resolve an IP address to a physical location (City, Country).
 
-    If the IP is a local loopback or local network IP, queries ip-api.com
-    without specifying an IP to geolocate the server's public gateway.
+    Tries ipapi.co first for higher precision in India, then falls back to ip-api.com.
+    Normalizes Tiruchirappalli to Trichy.
     """
     import requests
     try:
@@ -57,6 +57,24 @@ def _get_ip_geolocation(ip_address: str) -> str:
             ip_address.startswith("172.16.") or
             ip_address.startswith("172.31.")
         )
+        
+        # 1. Try ipapi.co (often highly accurate for regional Indian IPs)
+        try:
+            url = "https://ipapi.co/json/" if is_local else f"https://ipapi.co/{ip_address}/json/"
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=3.0)
+            if resp.status_code == 200:
+                res = resp.json()
+                city = res.get("city", "")
+                country = res.get("country_name", "")
+                if city.lower() == "tiruchirappalli":
+                    city = "Trichy"
+                if city and country:
+                    return f"{city}, {country}"
+        except Exception as e:
+            print(f"⚠️ ipapi.co lookup failed: {e}")
+
+        # 2. Fallback to ip-api.com
         url = "http://ip-api.com/json/" if is_local else f"http://ip-api.com/json/{ip_address}"
         resp = requests.get(url, timeout=3.0)
         if resp.status_code == 200:
@@ -64,6 +82,8 @@ def _get_ip_geolocation(ip_address: str) -> str:
             if res.get("status") == "success":
                 city = res.get("city", "")
                 country = res.get("country", "")
+                if city.lower() == "tiruchirappalli":
+                    city = "Trichy"
                 if city and country:
                     return f"{city}, {country}"
                 elif country:
@@ -71,7 +91,7 @@ def _get_ip_geolocation(ip_address: str) -> str:
                 elif city:
                     return city
     except Exception as e:
-        print(f"⚠️ Geolocation service failed: {e}")
+        print(f"⚠️ Geolocation fallback failed: {e}")
     return "Unknown"
 
 

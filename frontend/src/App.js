@@ -58,6 +58,9 @@ function App() {
   // Report modal
   const [showReport, setShowReport] = useState(false);
 
+  // User location resolved via HTML5 Geolocation API
+  const [userLocation, setUserLocation] = useState("Unknown");
+
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -105,6 +108,69 @@ function App() {
 
     fetchLogs();
     fetchAlerts();
+
+    // Browser Geolocation
+    if (navigator.geolocation) {
+      const geoOptions = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            const res = await axios.get(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            let city = res.data.city || res.data.locality || "Unknown";
+            if (city.toLowerCase() === "tiruchirappalli") {
+              city = "Trichy";
+            }
+            const country = res.data.countryName || "";
+            const resolvedLoc = country ? `${city}, ${country}` : city;
+            
+            // If browser returned Coimbatore (likely IP fallback), double check with ipapi.co
+            if (city.toLowerCase() === "coimbatore") {
+              try {
+                const ipapiRes = await axios.get("https://ipapi.co/json/");
+                let ipCity = ipapiRes.data.city;
+                if (ipCity && ipCity.toLowerCase() !== "coimbatore") {
+                  if (ipCity.toLowerCase() === "tiruchirappalli") {
+                    ipCity = "Trichy";
+                  }
+                  const ipCountry = ipapiRes.data.country_name || "";
+                  setUserLocation(ipCountry ? `${ipCity}, ${ipCountry}` : ipCity);
+                  return;
+                }
+              } catch (e) {
+                console.warn("ipapi.co fallback check failed:", e);
+              }
+            }
+            
+            setUserLocation(resolvedLoc);
+          } catch (err) {
+            console.error("Failed to reverse-geocode coordinates:", err);
+          }
+        },
+        async (err) => {
+          console.warn("User denied Geolocation or error occurred:", err);
+          // Fallback to client-side IP lookup if browser geolocation failed
+          try {
+            const ipapiRes = await axios.get("https://ipapi.co/json/");
+            let ipCity = ipapiRes.data.city || "Unknown";
+            if (ipCity.toLowerCase() === "tiruchirappalli") {
+              ipCity = "Trichy";
+            }
+            const ipCountry = ipapiRes.data.country_name || "";
+            setUserLocation(ipCountry ? `${ipCity}, ${ipCountry}` : ipCity);
+          } catch (e) {
+            console.warn("ipapi.co client-side fallback failed:", e);
+          }
+        },
+        geoOptions
+      );
+    }
 
     const handleNewActivity = (newLog) => {
       setLogs((prev) => [...prev, newLog]);
@@ -437,6 +503,11 @@ function App() {
           <div className="user-info">
             <span className="user-name">{currentUser?.full_name || currentUser?.username}</span>
             <span className="user-role badge">{currentUser?.role}</span>
+            {userLocation !== "Unknown" && (
+              <span className="user-location-badge" style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: '8px' }}>
+                📍 {userLocation}
+              </span>
+            )}
           </div>
           <button className="logout-btn" onClick={logout}>
             Sign Out

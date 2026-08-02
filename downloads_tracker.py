@@ -76,7 +76,6 @@ class DownloadsWatcher:
     def test_geolocation(self):
         """Check geolocation resolved by the backend to verify IP lookup is working."""
         print("\n📍 Querying local IP address and geolocation...")
-        # We simulate a test event with "location": "detect" to see what city is resolved
         headers = {"Authorization": f"Bearer {self.token}"}
         payload = {
             "user_id": self.username,
@@ -85,28 +84,44 @@ class DownloadsWatcher:
             "failed_attempts": 0,
             "device_fingerprint": "Agent-Test-Script"
         }
+        self.detected_location = "Unknown"
         try:
             resp = requests.post(f"{self.api_url}/log-activity", json=payload, headers=headers, timeout=5.0)
             if resp.status_code == 200:
-                # Get the latest logs to see resolved location
                 logs_resp = requests.get(f"{self.api_url}/get-logs?page=1&per_page=1", headers=headers, timeout=5.0)
                 if logs_resp.status_code == 200:
                     logs_data = logs_resp.json()
                     logs_list = logs_data.get("data", []) if isinstance(logs_data, dict) else logs_data
                     if logs_list:
                         latest = logs_list[0]
-                        print(f"🌍 Detected Real Geolocation: {latest.get('location')} (IP: {latest.get('ip_address')})")
+                        self.detected_location = latest.get("location", "Unknown")
+                        print(f"🌍 Detected Real Geolocation: {self.detected_location} (IP: {latest.get('ip_address')})")
+                        
+                        # Prompt the user for location override
+                        user_loc = input(f"Enter your location to use [{self.detected_location}]: ").strip()
+                        if user_loc:
+                            self.custom_location = user_loc
+                            print(f"📍 Location set manually to: {self.custom_location}")
+                        else:
+                            self.custom_location = self.detected_location
+                            print(f"📍 Location set to: {self.custom_location}")
                         return
             print("⚠️ Could not geolocate IP address.")
+            user_loc = input("Enter your location to use [Unknown]: ").strip()
+            self.custom_location = user_loc if user_loc else "Unknown"
+            print(f"📍 Location set to: {self.custom_location}")
         except Exception as e:
             print(f"⚠️ Geolocation test failed: {e}")
+            user_loc = input("Enter your location to use [Unknown]: ").strip()
+            self.custom_location = user_loc if user_loc else "Unknown"
+            print(f"📍 Location set to: {self.custom_location}")
 
     def send_download_event(self, filename):
         """Send a real-time event log to the backend."""
         headers = {"Authorization": f"Bearer {self.token}"}
         payload = {
             "user_id": self.username,
-            "location": "detect",  # Tells backend to geolocate automatically
+            "location": getattr(self, "custom_location", "detect"),
             "downloads": 1,
             "failed_attempts": 0,
             "device_fingerprint": f"Agent-FileWatcher-Watcher"
@@ -117,7 +132,7 @@ class DownloadsWatcher:
             resp = requests.post(f"{self.api_url}/log-activity", json=payload, headers=headers, timeout=5.0)
             if resp.status_code == 200:
                 data = resp.json()
-                print(f"✅ Success! Risk Score: {data.get('risk_score')} | Status: {data.get('status')}")
+                print(f"✅ Success! Risk Score: {data.get('risk_score')} | Status: {data.get('status')} (Location: {payload['location']})")
             elif resp.status_code == 401:
                 print("🔑 Session expired. Re-authenticating...")
                 if self.login():

@@ -210,7 +210,7 @@ class ProfileManager:
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"\u26a0\ufe0f Could not ensure user_profiles table: {e}")
+            print(f"[WARN] Could not ensure user_profiles table: {e}")
 
     def _load_from_db(self):
         """Load all profiles from the database into memory."""
@@ -226,9 +226,9 @@ class ProfileManager:
                 profile.from_dict(data)
                 self.profiles[row["user_id"]] = profile
             if self.profiles:
-                print(f"\u2705 Loaded {len(self.profiles)} user profiles from DB")
+                print(f"[OK] Loaded {len(self.profiles)} user profiles from DB")
         except Exception as e:
-            print(f"\u26a0\ufe0f Could not load profiles from DB: {e}")
+            print(f"[WARN] Could not load profiles from DB: {e}")
 
     def _save_profile_to_db(self, user_id):
         """Persist a single user profile to the database."""
@@ -252,7 +252,7 @@ class ProfileManager:
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"\u26a0\ufe0f Could not save profile for {user_id}: {e}")
+            print(f"[WARN] Could not save profile for {user_id}: {e}")
 
     # ------------------------------------------------------------------
     # Public API (same interface as before)
@@ -287,9 +287,9 @@ class ProfileManager:
             data = self.get_all_profiles()
             with open(filepath, "w") as f:
                 json.dump(data, f, indent=2)
-            print(f"\u2705 Saved {len(data)} profiles to {filepath}")
+            print(f"[OK] Saved {len(data)} profiles to {filepath}")
         except Exception as e:
-            print(f"\u274c Error saving profiles: {e}")
+            print(f"[ERROR] Error saving profiles: {e}")
 
     def load_profiles(self, filepath="user_profiles.json"):
         """Load profiles from JSON file"""
@@ -300,11 +300,11 @@ class ProfileManager:
                 profile = UserProfile(user_id)
                 profile.from_dict(profile_data)
                 self.profiles[user_id] = profile
-            print(f"\u2705 Loaded {len(data)} profiles from {filepath}")
+            print(f"[OK] Loaded {len(data)} profiles from {filepath}")
         except FileNotFoundError:
-            print(f"\u2139\ufe0f No profile file found at {filepath}")
+            print(f"[INFO] No profile file found at {filepath}")
         except Exception as e:
-            print(f"\u274c Error loading profiles: {e}")
+            print(f"[ERROR] Error loading profiles: {e}")
 
 
 # Global instance

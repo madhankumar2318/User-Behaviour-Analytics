@@ -36,12 +36,12 @@ class MLRiskEngine:
             try:
                 self.model = joblib.load(self.model_path)
                 self.is_trained = True
-                print("✅ ML model loaded successfully")
+                print("[OK] ML model loaded successfully")
             except Exception as e:
-                print(f"⚠️ Could not load model: {e}")
+                print(f"[WARN] Could not load model: {e}")
                 self.is_trained = False
         else:
-            print("ℹ️ No pre-trained model found. Will train on first use.")
+            print("[INFO] No pre-trained model found. Will train on first use.")
 
         # Load location encoder if available
         encoder_path = self.model_path + ".locations.json"
@@ -49,9 +49,9 @@ class MLRiskEngine:
             try:
                 with open(encoder_path, "r") as f:
                     self.location_encoder = json.load(f)
-                print(f"✅ Location encoder loaded ({len(self.location_encoder)} cities)")
+                print(f"[OK] Location encoder loaded ({len(self.location_encoder)} cities)")
             except Exception as e:
-                print(f"⚠️ Could not load location encoder: {e}")
+                print(f"[WARN] Could not load location encoder: {e}")
 
     def save_model(self):
         """Save trained model and location encoder to disk"""
@@ -61,9 +61,9 @@ class MLRiskEngine:
             encoder_path = self.model_path + ".locations.json"
             with open(encoder_path, "w") as f:
                 json.dump(self.location_encoder, f)
-            print(f"✅ Model saved to {self.model_path}")
+            print(f"[OK] Model saved to {self.model_path}")
         except Exception as e:
-            print(f"❌ Error saving model: {e}")
+            print(f"[ERROR] Error saving model: {e}")
 
     def encode_location(self, location):
         """Encode location as numeric value"""

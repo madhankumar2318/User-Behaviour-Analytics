@@ -115,13 +115,13 @@ def initialize_ml():
                 profile_manager.update_profile(uid, logs_list)
 
             print(
-                f"✅ ML initialised with {len(logs)} logs "
+                f"[OK] ML initialised with {len(logs)} logs "
                 f"and {len(user_logs)} user profiles"
             )
         else:
-            print(f"ℹ️  Not enough data for ML training. Need 10+, have {len(logs)}")
+            print(f"[INFO] Not enough data for ML training. Need 10+, have {len(logs)}")
     except Exception as e:
-        print(f"❌ Error initialising ML: {e}")
+        print(f"[ERROR] Error initialising ML: {e}")
 
 
 # Ensure logs table exists every time the module is imported (including tests)
